@@ -6,8 +6,6 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
-console.log(process.env.DATABASE_URL);
-
 if (!process.env.DATABASE_URL) {
   console.error("Missing DATABASE_URL env var");
   process.exit(1);
