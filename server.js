@@ -6,6 +6,8 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+console.log(process.env.DATABASE_URL);
+
 if (!process.env.DATABASE_URL) {
   console.error("Missing DATABASE_URL env var");
   process.exit(1);
@@ -27,15 +29,14 @@ pool.query("SELECT 1").then(
 app.post("/data", async (req, res) => {
   try {
     const row = {
-      t: Date.now(),
-      pressure: req.body.pressure ?? null,
-      accel: req.body.accel ?? null,
+      pressure: req.body.pressure,
+      accel: req.body.accel,
     };
 
     await pool.query(
-      `INSERT INTO telemetry (t, pressure, accel)
-       VALUES ($1, $2, $3)`,
-      [row.t, row.pressure, row.accel]
+      `INSERT INTO telemetry (pressure, accel)
+       VALUES ($1, $2)`,
+      [row.pressure, row.accel]
     );
 
     console.log("Successfully stored: ", row);
@@ -51,7 +52,7 @@ app.get("/data", async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit || "200", 10), 2000);
 
     const { rows } = await pool.query(
-      `SELECT id, t, created_at, pressure, accel
+      `SELECT id, t, pressure, accel
        FROM telemetry
        ORDER BY t DESC
        LIMIT $1`,
