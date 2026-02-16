@@ -32,13 +32,26 @@ app.post("/data", async (req, res) => {
     const payload = req.body;
     const rows = Array.isArray(payload) ? payload : [payload];
 
-    for (const r of rows) {
-      await pool.query(
-        `INSERT INTO telemetry (t, pressure, accel)
-         VALUES (NOW(), $1, $2)`,
-        [r.pressure, r.accel]
-      );
+    if (rows.length === 0) {
+      return res.status(400).json({ ok:false, error:"empty_payload" });
     }
+
+    const values = [];
+    const params = [];
+
+    rows.forEach((r, i) => {
+      if (r.pressure == null || r.accel == null) {
+        throw new Error("bad payload");
+      }
+      values.push(`(NOW(), $${i*2+1}, $${i*2+2})`);
+      params.push(r.pressure, r.accel);
+    });
+
+    await pool.query(
+      `INSERT INTO telemetry (t, pressure, accel)
+       VALUES ${values.join(",")}`,
+      params
+    );
 
     console.log("Stored batch:", rows.length);
 
