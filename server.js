@@ -24,27 +24,38 @@ pool.query("SELECT 1").then(
   }
 );
 
+//
+// BULK + SINGLE COMPAT POST
+//
 app.post("/data", async (req, res) => {
   try {
-    const row = {
-      pressure: req.body.pressure,
-      accel: req.body.accel,
-    };
+    const payload = req.body;
+    const rows = Array.isArray(payload) ? payload : [payload];
 
-    await pool.query(
-      `INSERT INTO telemetry (pressure, accel)
-       VALUES ($1, $2)`,
-      [row.pressure, row.accel]
-    );
+    for (const r of rows) {
+      await pool.query(
+        `INSERT INTO telemetry (t, pressure, accel)
+         VALUES (NOW(), $1, $2)`,
+        [r.pressure, r.accel]
+      );
+    }
 
-    console.log("Successfully stored: ", row);
-    res.json({ ok: true });
+    console.log("Stored batch:", rows.length);
+
+    res.json({
+      ok: true,
+      inserted: rows.length
+    });
+
   } catch (err) {
-    console.error("POST /data error:", err);
+    console.error("POST bulk error:", err);
     res.status(500).json({ ok: false, error: "db_error" });
   }
 });
 
+//
+//  READ FROM DATABASE
+//
 app.get("/data", async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit || "200", 10), 2000);
@@ -58,12 +69,16 @@ app.get("/data", async (req, res) => {
     );
 
     res.json(rows);
+
   } catch (err) {
     console.error("GET /data error:", err);
     res.status(500).json({ ok: false, error: "db_error" });
   }
 });
 
+//
+// HEALTH CHECK
+//
 app.get("/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
@@ -78,4 +93,3 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log("API running on port", PORT)
 );
-

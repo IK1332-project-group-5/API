@@ -1,0 +1,7 @@
+POST https://api-production-4aeb.up.railway.app/data
+Content-Type: application/json
+
+[
+  {"pressure":1001,"accel":1},
+  {"pressure":1002,"accel":2}
+]
