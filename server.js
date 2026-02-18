@@ -43,12 +43,12 @@ app.post("/data", async (req, res) => {
       if (r.pressure == null || r.accel == null) {
         throw new Error("bad payload");
       }
-      values.push(`(NOW(), $${i*2+1}, $${i*2+2})`);
+      values.push(`( $${i*2+1}, $${i*2+2})`);
       params.push(r.pressure, r.accel);
     });
 
     await pool.query(
-      `INSERT INTO telemetry (t, pressure, accel)
+      `INSERT INTO telemetry ( pressure, accel)
        VALUES ${values.join(",")}`,
       params
     );
@@ -62,7 +62,7 @@ app.post("/data", async (req, res) => {
 
   } catch (err) {
     console.error("POST bulk error:", err);
-    res.status(500).json({ ok: false, error: "db_error" });
+    res.status(500).json({ ok: false, error: err });
   }
 });
 
