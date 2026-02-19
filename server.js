@@ -81,7 +81,7 @@ app.get("/data", async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit || "200", 10), 2000);
 
     const { rows } = await pool.query(
-      `SELECT id, t, pressure, accel
+      `SELECT *
        FROM telemetry
        ORDER BY id DESC
        LIMIT $1`,
