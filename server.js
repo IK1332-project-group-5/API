@@ -49,7 +49,7 @@ app.post("/data", async (req, res) => {
 
       const base = i * 4;
 
-      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`);
+      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`);
       params.push(r.pressure, r.accel, r.gyro, r.mag);
     });
 
