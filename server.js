@@ -42,19 +42,20 @@ app.post("/data", async (req, res) => {
         r.pressure == null ||
         r.accel == null ||
         r.gyro == null ||
-        r.mag == null
+        r.mag == null ||
+        r.moving == null
       ) {
         throw new Error("bad payload");
       }
 
-      const base = i * 4;
+      const base = i * 5;
 
-      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4})`);
-      params.push(r.pressure, r.accel, r.gyro, r.mag);
+      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`);
+      params.push(r.pressure, r.accel, r.gyro, r.mag, (r.moving === 1 ? true : false));
     });
 
     await pool.query(
-      `INSERT INTO telemetry (pressure, accel, gyro, mag)
+      `INSERT INTO telemetry (pressure, accel, gyro, mag, moving)
        VALUES ${values.join(",")}`,
       params
     );
