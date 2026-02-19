@@ -39,7 +39,6 @@ app.post("/data", async (req, res) => {
 
     rows.forEach((r, i) => {
       if (
-        r.t == null ||
         r.pressure == null ||
         r.accel == null ||
         r.gyro == null ||
@@ -48,10 +47,10 @@ app.post("/data", async (req, res) => {
         throw new Error("bad payload");
       }
 
-      const base = i * 5;
+      const base = i * 4;
 
       values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`);
-      params.push(r.t, r.pressure, r.accel, r.gyro, r.mag);
+      params.push(r.pressure, r.accel, r.gyro, r.mag);
     });
 
     await pool.query(
