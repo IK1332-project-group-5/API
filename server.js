@@ -24,9 +24,7 @@ pool.query("SELECT 1").then(
   }
 );
 
-//
 // BULK + SINGLE COMPAT POST
-//
 app.post("/data", async (req, res) => {
   try {
     const payload = req.body;
@@ -85,7 +83,7 @@ app.get("/data", async (req, res) => {
     const { rows } = await pool.query(
       `SELECT id, t, pressure, accel
        FROM telemetry
-       ORDER BY t DESC
+       ORDER BY id DESC
        LIMIT $1`,
       [limit]
     );
@@ -98,9 +96,7 @@ app.get("/data", async (req, res) => {
   }
 });
 
-//
 // HEALTH CHECK
-//
 app.get("/health", async (req, res) => {
   try {
     await pool.query("SELECT 1");
