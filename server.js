@@ -33,22 +33,31 @@ app.post("/data", async (req, res) => {
     const rows = Array.isArray(payload) ? payload : [payload];
 
     if (rows.length === 0) {
-      return res.status(400).json({ ok:false, error:"empty_payload" });
+      return res.status(400).json({ ok: false, error: "empty_payload" });
     }
 
     const values = [];
     const params = [];
 
     rows.forEach((r, i) => {
-      if (r.pressure == null || r.accel == null) {
+      if (
+        r.t == null ||
+        r.pressure == null ||
+        r.accel == null ||
+        r.gyro == null ||
+        r.mag == null
+      ) {
         throw new Error("bad payload");
       }
-      values.push(`( $${i*2+1}, $${i*2+2})`);
-      params.push(r.pressure, r.accel);
+
+      const base = i * 5;
+
+      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`);
+      params.push(r.t, r.pressure, r.accel, r.gyro, r.mag);
     });
 
     await pool.query(
-      `INSERT INTO telemetry ( pressure, accel)
+      `INSERT INTO telemetry (pressure, accel, gyro, mag)
        VALUES ${values.join(",")}`,
       params
     );
