@@ -98,12 +98,34 @@ app.post("/data", async (req, res) => {
     const lastInsertedId = insertResult.rows[insertResult.rows.length - 1].id;
 
     for (const a of alarmInserts) {
-      await pool.query(
-        `INSERT INTO alarms
-         (type, severity, message, first_seen_id, last_seen_id)
-         VALUES ($1, $2, $3, $4, $4)`,
-        [a.type, a.severity, a.message, lastInsertedId]
+
+      // kolla om samma alarm redan finns (senaste)
+      const existing = await pool.query(
+        `SELECT id
+         FROM alarms
+         WHERE type = $1
+         ORDER BY id DESC
+         LIMIT 1`,
+        [a.type]
       );
+
+      if (existing.rows.length > 0) {
+        // uppdatera last_seen_id istället
+        await pool.query(
+          `UPDATE alarms
+           SET last_seen_id = $1
+           WHERE id = $2`,
+          [lastInsertedId, existing.rows[0].id]
+        );
+      } else {
+        // skapa nytt alarm
+        await pool.query(
+          `INSERT INTO alarms
+           (type, severity, message, first_seen_id, last_seen_id)
+           VALUES ($1, $2, $3, $4, $4)`,
+          [a.type, a.severity, a.message, lastInsertedId]
+        );
+      }
     }
 
 
