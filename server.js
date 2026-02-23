@@ -40,6 +40,7 @@ app.post("/data", async (req, res) => {
     const values = [];
     const params = [];
     const alarms = [];
+    const alarmInserts = [];
 
 
     rows.forEach((r, i) => {
@@ -57,6 +58,11 @@ app.post("/data", async (req, res) => {
     ) {
       alarms.push("door_event");
     }
+    alarmInserts.push({
+      type: "door_event",
+      severity: "info",
+      message: "Door opened or closed"
+    });
 
     lastMag = r.mag;
 
@@ -81,6 +87,20 @@ app.post("/data", async (req, res) => {
        VALUES ${values.join(",")}`,
       params
     );
+
+    for (const a of alarmInserts) {
+      await pool.query(
+        `INSERT INTO alarms
+         (type, severity, message, first_seen_id, last_seen_id)
+         VALUES (
+           $1, $2, $3,
+           (SELECT MAX(id) FROM telemetry),
+           (SELECT MAX(id) FROM telemetry)
+         )`,
+        [a.type, a.severity, a.message]
+      );
+    }
+
 
     console.log("Stored batch:", rows.length);
 
@@ -118,6 +138,22 @@ app.get("/data", async (req, res) => {
     res.status(500).json({ ok: false, error: "db_error" });
   }
 });
+
+app.get("/alarms", async (req, res) => {
+  try {
+    const { rows } = await pool.query(
+      `SELECT *
+       FROM alarms
+       ORDER BY id DESC
+       LIMIT 50`
+    );
+
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "db_error" });
+  }
+});
+
 
 // HEALTH CHECK
 app.get("/health", async (req, res) => {
