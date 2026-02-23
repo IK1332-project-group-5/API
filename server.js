@@ -36,8 +36,16 @@ app.post("/data", async (req, res) => {
 
     const values = [];
     const params = [];
+    const alarms = [];
+
 
     rows.forEach((r, i) => {
+
+    // API ALARM
+    if ((r.moving === 0 || r.moving === false) && Math.abs(r.accel) > 3) {
+      alarms.push("abrupt_stop");
+    }
+
       if (
         r.pressure == null ||
         r.accel == null ||
@@ -64,7 +72,8 @@ app.post("/data", async (req, res) => {
 
     res.json({
       ok: true,
-      inserted: rows.length
+      inserted: rows.length,
+      alarms
     });
 
   } catch (err) {
