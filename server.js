@@ -46,9 +46,15 @@ app.post("/data", async (req, res) => {
     rows.forEach((r, i) => {
 
     // API ALARM
-    if ((r.moving === 0 || r.moving === false) && Math.abs(r.accel) > 3) {
-      alarms.push("abrupt_stop");
-    }
+   if ((r.moving === 0 || r.moving === false) && Math.abs(r.accel) > 3) {
+     alarms.push("abrupt_stop");
+
+     alarmInserts.push({
+       type: "abrupt_stop",
+       severity: "high",
+       message: "Abrupt stop detected"
+     });
+   }
 
     // door open/close ONLY when elevator is stopped
     if (
@@ -57,12 +63,13 @@ app.post("/data", async (req, res) => {
       Math.abs(r.mag - lastMag) > 2
     ) {
       alarms.push("door_event");
+
+      alarmInserts.push({
+        type: "door_event",
+        severity: "info",
+        message: "Door opened or closed"
+      });
     }
-    alarmInserts.push({
-      type: "door_event",
-      severity: "info",
-      message: "Door opened or closed"
-    });
 
     lastMag = r.mag;
 
@@ -82,22 +89,20 @@ app.post("/data", async (req, res) => {
       params.push(r.pressure, r.accel, r.gyro, r.mag, (r.moving === 1 ? true : false));
     });
 
-    await pool.query(
-      `INSERT INTO telemetry (pressure, accel, gyro, mag, moving)
-       VALUES ${values.join(",")}`,
-      params
-    );
+     const insertResult = await pool.query(
+     `INSERT INTO telemetry (pressure, accel, gyro, mag, moving)
+      VALUES ${values.join(",")}
+      RETURNING id`,
+     params
+     );
+    const lastInsertedId = insertResult.rows[insertResult.rows.length - 1].id;
 
     for (const a of alarmInserts) {
       await pool.query(
         `INSERT INTO alarms
          (type, severity, message, first_seen_id, last_seen_id)
-         VALUES (
-           $1, $2, $3,
-           (SELECT MAX(id) FROM telemetry),
-           (SELECT MAX(id) FROM telemetry)
-         )`,
-        [a.type, a.severity, a.message]
+         VALUES ($1, $2, $3, $4, $4)`,
+        [a.type, a.severity, a.message, lastInsertedId]
       );
     }
 
