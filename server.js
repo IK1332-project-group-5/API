@@ -16,6 +16,9 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
+let lastMag = null;
+
+
 pool.query("SELECT 1").then(
   () => console.log("Connected to Postgres."),
   (err) => {
@@ -45,6 +48,17 @@ app.post("/data", async (req, res) => {
     if ((r.moving === 0 || r.moving === false) && Math.abs(r.accel) > 3) {
       alarms.push("abrupt_stop");
     }
+
+    // door open/close ONLY when elevator is stopped
+    if (
+      (r.moving === 0 || r.moving === false) &&
+      lastMag !== null &&
+      Math.abs(r.mag - lastMag) > 2
+    ) {
+      alarms.push("door_event");
+    }
+
+    lastMag = r.mag;
 
       if (
         r.pressure == null ||
