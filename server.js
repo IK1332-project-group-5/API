@@ -172,11 +172,21 @@ app.get("/data", async (req, res) => {
 app.get("/alarms", async (req, res) => {
   try {
     const { rows } = await pool.query(
-      `SELECT *
-       FROM alarms
-       ORDER BY id DESC
-       LIMIT 50`
+      `
+      SELECT a.*
+      FROM alarms a
+      JOIN telemetry t ON t.id = a.last_seen_id
+      WHERE t.moving = false
+      ORDER BY a.id DESC
+      LIMIT 50
+      `
     );
+
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: "db_error" });
+  }
+});
 
     res.json(rows);
   } catch (err) {
