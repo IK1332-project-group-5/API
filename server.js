@@ -168,7 +168,6 @@ app.get("/data", async (req, res) => {
     res.status(500).json({ ok: false, error: "db_error" });
   }
 });
-
 app.get("/alarms", async (req, res) => {
   try {
     const { rows } = await pool.query(
@@ -181,12 +180,6 @@ app.get("/alarms", async (req, res) => {
       LIMIT 50
       `
     );
-
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: "db_error" });
-  }
-});
 
     res.json(rows);
   } catch (err) {
