@@ -16,8 +16,7 @@ const pool = new Pool({
   ssl: { rejectUnauthorized: false },
 });
 
-let lastMag = null;
-
+let lastDoorOpen = null;
 
 pool.query("SELECT 1").then(
   () => console.log("Connected to Postgres."),
@@ -42,13 +41,17 @@ app.post("/data", async (req, res) => {
     const alarms = [];
     const alarmInserts = [];
 
-
     rows.forEach((r, i) => {
 
-      // API ALARM
-      if ((r.moving === 0 || r.moving === false) && Math.abs(r.accel) > 3) {
-        alarms.push("abrupt_stop");
+      // accel är JSONB {x, y, z} — beräkna magnitude för abrupt stop
+      const accelMag = r.accel
+        ? Math.sqrt(r.accel.x ** 2 + r.accel.y ** 2 + (r.accel.z - 1000) ** 2)
+        : 0;
 
+      // ABRUPT STOP: hissen är stillastående men hög acceleration
+      const isMoving = r.moving === 1 || r.moving === true;
+      if (!isMoving && accelMag > 150) {
+        alarms.push("abrupt_stop");
         alarmInserts.push({
           type: "abrupt_stop",
           severity: "high",
@@ -56,22 +59,18 @@ app.post("/data", async (req, res) => {
         });
       }
 
-      // door open/close ONLY when elevator is stopped
-      if (
-        (r.moving === 0 || r.moving === false) &&
-        lastMag !== null &&
-        Math.abs(r.mag - lastMag) > 2
-      ) {
-        alarms.push("door_event");
-
+      // DOOR EVENT: Arduino ML skickar door_open baserat på magnetometer
+      const doorOpen = r.door_open === 1 || r.door_open === true;
+      if (!isMoving && doorOpen !== lastDoorOpen && lastDoorOpen !== null) {
+        const eventType = doorOpen ? "door_opened" : "door_closed";
+        alarms.push(eventType);
         alarmInserts.push({
-          type: "door_event",
+          type: eventType,
           severity: "info",
-          message: "Door opened or closed"
+          message: doorOpen ? "Door opened" : "Door closed"
         });
       }
-
-      lastMag = r.mag;
+      lastDoorOpen = doorOpen;
 
       if (
         r.pressure == null ||
@@ -85,11 +84,16 @@ app.post("/data", async (req, res) => {
       }
 
       const base = i * 7;
-
-
       values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7})`);
-      params.push(r.pressure, r.accel, r.gyro, r.mag, (r.moving === 1 ? true : false), r.floor, (r.door_open === 1 ? true : false));
-
+      params.push(
+        r.pressure,
+        r.accel,
+        r.gyro,
+        r.mag,
+        isMoving,
+        r.floor,
+        doorOpen
+      );
     });
 
     const insertResult = await pool.query(
