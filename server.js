@@ -93,7 +93,7 @@ app.post("/data", async (req, res) => {
     });
 
     const insertResult = await pool.query(
-      `INSERT INTO telemetry (pressure, accel, gyro, mag, moving, floor, open_door)
+      `INSERT INTO telemetry (pressure, accel, gyro, mag, moving, floor, door_open)
       VALUES ${values.join(",")}
       RETURNING id`,
       params
