@@ -71,8 +71,6 @@ app.post("/data", async (req, res) => {
         });
       }
 
-
-
       lastMag = r.mag;
 
       if (
@@ -80,19 +78,20 @@ app.post("/data", async (req, res) => {
         r.accel == null ||
         r.gyro == null ||
         r.mag == null ||
-        r.moving == null
+        r.moving == null ||
+        r.door_open == null
       ) {
         throw new Error("bad payload");
       }
 
-      const base = i * 6;
+      const base = i * 7;
 
-      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`);
-      params.push(r.pressure, r.accel, r.gyro, r.mag, (r.moving === 1 ? true : false), r.floor);
+      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7})`);
+      params.push(r.pressure, r.accel, r.gyro, r.mag, (r.moving === 1 ? true : false), r.floor, (r.door_open === 1 ? true : false));
     });
 
     const insertResult = await pool.query(
-      `INSERT INTO telemetry (pressure, accel, gyro, mag, moving, floor)
+      `INSERT INTO telemetry (pressure, accel, gyro, mag, moving, floor, open_door)
       VALUES ${values.join(",")}
       RETURNING id`,
       params
