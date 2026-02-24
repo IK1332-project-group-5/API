@@ -71,6 +71,8 @@ app.post("/data", async (req, res) => {
         });
       }
 
+
+
       lastMag = r.mag;
 
       if (
@@ -83,7 +85,7 @@ app.post("/data", async (req, res) => {
         throw new Error("bad payload");
       }
 
-      const base = i * 5;
+      const base = i * 6;
 
       values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`);
       params.push(r.pressure, r.accel, r.gyro, r.mag, (r.moving === 1 ? true : false), r.floor);
@@ -127,6 +129,7 @@ app.post("/data", async (req, res) => {
         );
       }
     }
+
 
 
     console.log("Stored batch:", rows.length);
