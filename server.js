@@ -45,33 +45,33 @@ app.post("/data", async (req, res) => {
 
     rows.forEach((r, i) => {
 
-    // API ALARM
-   if ((r.moving === 0 || r.moving === false) && Math.abs(r.accel) > 3) {
-     alarms.push("abrupt_stop");
+      // API ALARM
+      if ((r.moving === 0 || r.moving === false) && Math.abs(r.accel) > 3) {
+        alarms.push("abrupt_stop");
 
-     alarmInserts.push({
-       type: "abrupt_stop",
-       severity: "high",
-       message: "Abrupt stop detected"
-     });
-   }
+        alarmInserts.push({
+          type: "abrupt_stop",
+          severity: "high",
+          message: "Abrupt stop detected"
+        });
+      }
 
-    // door open/close ONLY when elevator is stopped
-    if (
-      (r.moving === 0 || r.moving === false) &&
-      lastMag !== null &&
-      Math.abs(r.mag - lastMag) > 2
-    ) {
-      alarms.push("door_event");
+      // door open/close ONLY when elevator is stopped
+      if (
+        (r.moving === 0 || r.moving === false) &&
+        lastMag !== null &&
+        Math.abs(r.mag - lastMag) > 2
+      ) {
+        alarms.push("door_event");
 
-      alarmInserts.push({
-        type: "door_event",
-        severity: "info",
-        message: "Door opened or closed"
-      });
-    }
+        alarmInserts.push({
+          type: "door_event",
+          severity: "info",
+          message: "Door opened or closed"
+        });
+      }
 
-    lastMag = r.mag;
+      lastMag = r.mag;
 
       if (
         r.pressure == null ||
@@ -85,16 +85,16 @@ app.post("/data", async (req, res) => {
 
       const base = i * 5;
 
-      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5})`);
-      params.push(r.pressure, r.accel, r.gyro, r.mag, (r.moving === 1 ? true : false));
+      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`);
+      params.push(r.pressure, r.accel, r.gyro, r.mag, (r.moving === 1 ? true : false), r.floor);
     });
 
-     const insertResult = await pool.query(
-     `INSERT INTO telemetry (pressure, accel, gyro, mag, moving)
+    const insertResult = await pool.query(
+      `INSERT INTO telemetry (pressure, accel, gyro, mag, moving, floor)
       VALUES ${values.join(",")}
       RETURNING id`,
-     params
-     );
+      params
+    );
     const lastInsertedId = insertResult.rows[insertResult.rows.length - 1].id;
 
     for (const a of alarmInserts) {
