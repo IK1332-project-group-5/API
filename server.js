@@ -86,8 +86,10 @@ app.post("/data", async (req, res) => {
 
       const base = i * 7;
 
+
       values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7})`);
       params.push(r.pressure, r.accel, r.gyro, r.mag, (r.moving === 1 ? true : false), r.floor, (r.door_open === 1 ? true : false));
+
     });
 
     const insertResult = await pool.query(
@@ -167,6 +169,7 @@ app.get("/data", async (req, res) => {
     res.status(500).json({ ok: false, error: "db_error" });
   }
 });
+
 app.get("/alarms", async (req, res) => {
   try {
     const { rows } = await pool.query(
