@@ -252,7 +252,6 @@ app.get("/trips", async (req, res) => {
     `);
 
     res.json(rows);
-    console.log(rows);
   } catch (err) {
     console.error("GET /trips error:", err);
     res.status(500).json({ error: "db_error" });
