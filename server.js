@@ -82,7 +82,6 @@ app.post("/data", async (req, res) => {
       if (
         r.pressure == null ||
         r.accel == null ||
-        r.gyro == null ||
         r.mag == null ||
         r.moving == null ||
         r.door_open == null
@@ -94,12 +93,11 @@ app.post("/data", async (req, res) => {
         return res.status(403);
       }
 
-      const base = i * 7;
-      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7})`);
+      const base = i * 6;
+      values.push(`($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6})`);
       params.push(
         r.pressure,
         r.accel,
-        r.gyro,
         r.mag,
         isMoving,
         r.floor,
@@ -108,7 +106,7 @@ app.post("/data", async (req, res) => {
     });
 
     const insertResult = await pool.query(
-      `INSERT INTO telemetry (pressure, accel, gyro, mag, moving, floor, door_open)
+      `INSERT INTO telemetry (pressure, accel, mag, moving, floor, door_open)
       VALUES ${values.join(",")}
       RETURNING id`,
       params
