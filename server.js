@@ -206,7 +206,45 @@ app.get("/alarms", async (req, res) => {
 app.get("/trips", async (req, res) => {
   try {
     const { rows } = await pool.query(`
-        SELECT * FROM trips;
+        WITH ordered AS (
+        SELECT
+          t.*,
+          LAG(moving) OVER (ORDER BY id) AS prev_moving
+        FROM telemetry t
+      ),
+      trip_starts AS (
+        SELECT
+          id AS start_id,
+          created_at AS start_time,
+          floor AS start_floor,
+          ROW_NUMBER() OVER (ORDER BY id) AS trip_no
+        FROM ordered
+        WHERE moving = true AND (prev_moving = false OR prev_moving IS NULL)
+      ),
+      trip_ends AS (
+        SELECT
+          id AS end_id,
+          created_at AS end_time,
+          floor AS end_floor,
+          ROW_NUMBER() OVER (ORDER BY id) AS trip_no
+        FROM ordered
+        WHERE moving = false AND prev_moving = true
+      ),
+      trips AS (
+        SELECT
+          s.trip_no,
+          s.start_id, e.end_id,
+          s.start_time, e.end_time,
+          s.start_floor, e.end_floor,
+          ABS(e.end_floor - s.start_floor) AS floors,
+          EXTRACT(EPOCH FROM (e.end_time - s.start_time)) AS duration_seconds
+        FROM trip_starts s
+        JOIN trip_ends e USING (trip_no)
+      )
+      SELECT *
+      FROM trips
+      ORDER BY end_id DESC
+      LIMIT 200;
       `);
     res.json(rows);
   } catch (err) {
