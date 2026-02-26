@@ -33,11 +33,11 @@ app.post("/data", async (req, res) => {
     const payload = req.body;
     const rows = Array.isArray(payload) ? payload : [payload];
 
-    const { api_key } = req.body;
-    if (!api_key || api_key !== process.env.API_KEY) {
-      console.log(api_key);
-      return res.status(403).json({ ok: false, error: "forbidden" });
-    }
+    // const { api_key } = req.body;
+    // if (!api_key || api_key !== process.env.API_KEY) {
+    //   console.log(api_key);
+    //   return res.status(403).json({ ok: false, error: "forbidden" });
+    // }
 
     if (rows.length === 0) {
       return res.status(400).json({ ok: false, error: "empty_payload" });
