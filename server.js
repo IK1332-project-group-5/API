@@ -215,3 +215,14 @@ const PORT = process.env.PORT || 3000;
 app.listen(PORT, () =>
   console.log("API running on port", PORT)
 );
+
+
+// CLOUD ML ENDPOINT
+app.get('/ml/model', async (req, res) => {
+  try {
+    const { rows } = await pool.query("SELECT * FROM linear_travel_model;");
+    res.json(rows).status(200);
+  } catch (error) {
+    res.status(500).json({ ok: false, error: error })
+  }
+});
