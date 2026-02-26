@@ -35,7 +35,7 @@ app.post("/data", async (req, res) => {
 
     const { api_key } = req.body;
     if (!api_key || api_key !== process.env.API_KEY) {
-      console.table(rows);
+      console.log(rows);
       return res.status(403).json({ ok: false, error: "forbidden" });
     }
 
