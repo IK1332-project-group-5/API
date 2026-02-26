@@ -217,7 +217,7 @@ app.listen(PORT, () =>
 );
 
 
-// CLOUD ML ENDPOINT
+// CLOUD ML ENDPOINTS
 app.get('/ml/model', async (req, res) => {
   try {
     const { rows } = await pool.query("SELECT * FROM linear_travel_model;");
@@ -226,3 +226,65 @@ app.get('/ml/model', async (req, res) => {
     res.status(500).json({ ok: false, error: error })
   }
 });
+
+app.get("/ml/predict/:start/:end", async (req, res) => {
+  try {
+    const start = Number(req.params.start);
+    const end = Number(req.params.end);
+
+    if (!Number.isFinite(start) || !Number.isFinite(end)) {
+      return res.status(400).json({
+        error: "Start and end must be valid numbers"
+      });
+    }
+
+    const floors = Math.abs(end - start);
+
+    const { rows } = await pool.query(
+      `SELECT beta0, beta1, sigma, r2, n, created_at
+       FROM linear_travel_model
+       ORDER BY id DESC
+       LIMIT 1`
+    );
+
+    if (rows.length === 0) {
+      return res.status(404).json({
+        error: "No trained model available yet"
+      });
+    }
+
+    const { beta0, beta1, sigma, r2, n, created_at } = rows[0];
+
+    const predicted = beta0 + beta1 * floors;
+
+    const lower = predicted - 2 * sigma;
+    const upper = predicted + 2 * sigma;
+
+    return res.json({
+      input: {
+        start_floor: start,
+        end_floor: end,
+        floors
+      },
+      prediction: {
+        expected_seconds: predicted,
+        range_95: [lower, upper]
+      },
+      model: {
+        beta0,
+        beta1,
+        sigma,
+        r2,
+        trained_on_trips: n,
+        trained_at: created_at
+      }
+    });
+
+  } catch (error) {
+    console.error("Prediction error:", error);
+    return res.status(500).json({
+      error: "Prediction failed"
+    });
+  }
+});
+
