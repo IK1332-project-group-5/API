@@ -206,59 +206,51 @@ app.get("/alarms", async (req, res) => {
 app.get("/trips", async (req, res) => {
   try {
     const { rows } = await pool.query(`
-        WITH ordered AS (
+      WITH last1000 AS (
+        SELECT id, floor, moving
+        FROM telemetry
+        ORDER BY id DESC
+        LIMIT 1000
+      ),
+      ordered AS (
         SELECT
           id,
-          t,
           floor,
           moving,
           LAG(moving) OVER (ORDER BY id) AS prev_moving
-        FROM telemetry
+        FROM last1000
       ),
-
-      trip_starts AS (
+      starts AS (
         SELECT
           id AS start_id,
-          t AS start_time,
           floor AS start_floor,
           ROW_NUMBER() OVER (ORDER BY id) AS trip_no
         FROM ordered
         WHERE moving = true
           AND (prev_moving = false OR prev_moving IS NULL)
       ),
-
-      trip_ends AS (
+      ends AS (
         SELECT
           id AS end_id,
-          t AS end_time,
           floor AS end_floor,
           ROW_NUMBER() OVER (ORDER BY id) AS trip_no
         FROM ordered
         WHERE moving = false
           AND prev_moving = true
-      ),
-
-      trips AS (
-        SELECT
-          s.trip_no,
-          s.start_id,
-          e.end_id,
-          s.start_time,
-          e.end_time,
-          s.start_floor,
-          e.end_floor,
-          ABS(e.end_floor - s.start_floor) AS floors,
-          EXTRACT(EPOCH FROM (e.end_time - s.start_time)) AS duration_seconds
-        FROM trip_starts s
-        JOIN trip_ends e USING (trip_no)
       )
+      SELECT
+        s.trip_no,
+        s.start_id,
+        e.end_id,
+        s.start_floor,
+        e.end_floor,
+        ABS(e.end_floor - s.start_floor) AS floors
+      FROM starts s
+      JOIN ends e USING (trip_no)
+      WHERE ABS(e.end_floor - s.start_floor) > 0
+      ORDER BY e.end_id DESC;
+    `);
 
-      SELECT *
-      FROM trips
-      WHERE floors > 0
-      ORDER BY end_id DESC
-      LIMIT 200;
-      `);
     res.json(rows);
     console.log(rows);
   } catch (err) {
