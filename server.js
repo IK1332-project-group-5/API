@@ -202,56 +202,57 @@ app.get("/alarms", async (req, res) => {
   }
 });
 
-// TRAVEL PATTERN — senaste resorna
+// TRAVEL PATTERN
 app.get("/trips", async (req, res) => {
   try {
-    const { rows } = await pool.query(`
-      WITH last1000 AS (
+    const N = 1000;
+
+    const { rows } = await pool.query(
+      `
+      WITH lastN AS (
         SELECT id, floor, moving
         FROM telemetry
         ORDER BY id DESC
-        LIMIT 1000
+        LIMIT $1
       ),
-      ordered AS (
+      o AS (
         SELECT
-          id,
-          floor,
-          moving,
+          id, floor, moving,
           LAG(moving) OVER (ORDER BY id) AS prev_moving
-        FROM last1000
+        FROM lastN
       ),
-      starts AS (
+      stops AS (
+        -- Arrival stop = first moving=false right after moving=true
         SELECT
-          id AS start_id,
-          floor AS start_floor,
-          ROW_NUMBER() OVER (ORDER BY id) AS trip_no
-        FROM ordered
-        WHERE moving = true
-          AND (prev_moving = false OR prev_moving IS NULL)
-      ),
-      ends AS (
-        SELECT
-          id AS end_id,
-          floor AS end_floor,
-          ROW_NUMBER() OVER (ORDER BY id) AS trip_no
-        FROM ordered
+          id AS stop_id,
+          floor AS stop_floor,
+          ROW_NUMBER() OVER (ORDER BY id) AS stop_no
+        FROM o
         WHERE moving = false
           AND prev_moving = true
+      ),
+      paired AS (
+        SELECT
+          s1.stop_id AS start_stop_id,
+          s2.stop_id AS end_stop_id,
+          s1.stop_floor AS start_floor,
+          s2.stop_floor AS end_floor,
+          ABS(s2.stop_floor - s1.stop_floor) AS floors
+        FROM stops s1
+        JOIN stops s2
+          ON s2.stop_no = s1.stop_no + 1
       )
-      SELECT
-        s.trip_no,
-        s.start_id,
-        e.end_id,
-        s.start_floor,
-        e.end_floor,
-        ABS(e.end_floor - s.start_floor) AS floors
-      FROM starts s
-      JOIN ends e USING (trip_no)
-      WHERE ABS(e.end_floor - s.start_floor) > 0
-      ORDER BY e.end_id DESC;
-    `);
+      SELECT *
+      FROM paired
+      WHERE floors > 0
+      ORDER BY end_stop_id DESC
+      LIMIT 50;
+      `,
+      [N]
+    );
 
     res.json(rows);
+    console.log(rows);
   } catch (err) {
     console.error("GET /trips error:", err);
     res.status(500).json({ error: "db_error" });
