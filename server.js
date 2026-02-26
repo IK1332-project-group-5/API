@@ -288,3 +288,70 @@ app.get("/ml/predict/:start/:end", async (req, res) => {
   }
 });
 
+app.get("/ml/anomalies/:limit/:threshold", async (req, res) => {
+  try {
+    // Limit = how many trips to include
+    // Threshold = how strictly to look for anomalies:
+    //             1 = 1 standard deviation away
+    //             2 = 2 standard deviation away etc.
+    // Basically, |z| > threshold
+    const limit = Number(req.params.limit);
+    const threshold = Number(req.params.threshold);
+
+    const safeLimit = Number.isFinite(limit) && limit > 0 ? Math.min(limit, 200) : 20;
+    const safeThreshold = Number.isFinite(threshold) && threshold > 0 ? threshold : 2;
+
+    const modelRes = await pool.query(
+      `SELECT beta0, beta1, sigma
+       FROM linear_travel_model
+       ORDER BY id DESC
+       LIMIT 1`
+    );
+
+    if (modelRes.rows.length === 0) {
+      return res.status(404).json({ error: "No trained model available" });
+    }
+
+    const beta0 = Number(modelRes.rows[0].beta0);
+    const beta1 = Number(modelRes.rows[0].beta1);
+    const sigma = Number(modelRes.rows[0].sigma);
+
+    if (!Number.isFinite(beta0) || !Number.isFinite(beta1) || !Number.isFinite(sigma) || sigma === 0) {
+      return res.status(400).json({ error: "Model parameters invalid; anomaly detection unavailable" });
+    }
+
+    const { rows } = await pool.query(
+      `
+      SELECT
+        t.id,
+        t.start_floor,
+        t.end_floor,
+        t.duration,
+        ABS(t.end_floor - t.start_floor) AS floors,
+        ( $1::double precision + $2::double precision * ABS(t.end_floor - t.start_floor) ) AS predicted,
+        (t.duration::double precision - ( $1::double precision + $2::double precision * ABS(t.end_floor - t.start_floor) )) AS error,
+        (t.duration::double precision - ( $1::double precision + $2::double precision * ABS(t.end_floor - t.start_floor) )) / $3::double precision AS z_score
+      FROM trips t
+      WHERE ABS(
+        (t.duration::double precision - ( $1::double precision + $2::double precision * ABS(t.end_floor - t.start_floor) )) / $3::double precision
+      ) > $4::double precision
+      ORDER BY ABS(
+        (t.duration::double precision - ( $1::double precision + $2::double precision * ABS(t.end_floor - t.start_floor) )) / $3::double precision
+      ) DESC
+      LIMIT $5::int
+      `,
+      [beta0, beta1, sigma, safeThreshold, safeLimit]
+    );
+
+    return res.json({
+      threshold: safeThreshold,
+      limit: safeLimit,
+      count: rows.length,
+      anomalies: rows
+    });
+  } catch (err) {
+    console.error("Anomaly detection error:", err);
+    return res.status(500).json({ error: "Failed to compute anomalies" });
+  }
+});
+
