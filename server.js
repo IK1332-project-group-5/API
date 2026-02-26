@@ -1,6 +1,7 @@
 const express = require("express");
 const cors = require("cors");
 const { Pool } = require("pg");
+require("dotenv").config();
 
 const app = express();
 app.use(express.json());
@@ -31,6 +32,11 @@ app.post("/data", async (req, res) => {
   try {
     const payload = req.body;
     const rows = Array.isArray(payload) ? payload : [payload];
+
+    const { api_key } = req.body;
+    if (!api_key || api_key !== process.env.API_KEY) {
+      return res.status(403).json({ ok: false, error: "forbidden" });
+    }
 
     if (rows.length === 0) {
       return res.status(400).json({ ok: false, error: "empty_payload" });
