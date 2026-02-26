@@ -202,7 +202,6 @@ app.get("/alarms", async (req, res) => {
   }
 });
 
-
 // TRAVEL PATTERN — senaste resorna
 app.get("/trips", async (req, res) => {
   try {
