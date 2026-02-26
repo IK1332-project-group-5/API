@@ -208,45 +208,59 @@ app.get("/trips", async (req, res) => {
     const { rows } = await pool.query(`
         WITH ordered AS (
         SELECT
-          t.*,
+          id,
+          t,
+          floor,
+          moving,
           LAG(moving) OVER (ORDER BY id) AS prev_moving
-        FROM telemetry t
+        FROM telemetry
       ),
+
       trip_starts AS (
         SELECT
           id AS start_id,
-          created_at AS start_time,
+          t AS start_time,
           floor AS start_floor,
           ROW_NUMBER() OVER (ORDER BY id) AS trip_no
         FROM ordered
-        WHERE moving = true AND (prev_moving = false OR prev_moving IS NULL)
+        WHERE moving = true
+          AND (prev_moving = false OR prev_moving IS NULL)
       ),
+
       trip_ends AS (
         SELECT
           id AS end_id,
-          created_at AS end_time,
+          t AS end_time,
           floor AS end_floor,
           ROW_NUMBER() OVER (ORDER BY id) AS trip_no
         FROM ordered
-        WHERE moving = false AND prev_moving = true
+        WHERE moving = false
+          AND prev_moving = true
       ),
+
       trips AS (
         SELECT
           s.trip_no,
-          s.start_id, e.end_id,
-          s.start_time, e.end_time,
-          s.start_floor, e.end_floor,
+          s.start_id,
+          e.end_id,
+          s.start_time,
+          e.end_time,
+          s.start_floor,
+          e.end_floor,
           ABS(e.end_floor - s.start_floor) AS floors,
           EXTRACT(EPOCH FROM (e.end_time - s.start_time)) AS duration_seconds
         FROM trip_starts s
         JOIN trip_ends e USING (trip_no)
       )
+
       SELECT *
       FROM trips
+      WHERE floors > 0
       ORDER BY end_id DESC
       LIMIT 200;
       `);
     res.json(rows);
+    console.log(rows);
   } catch (err) {
     console.error("GET /trips error:", err);
     res.status(500).json({ error: "db_error" });
