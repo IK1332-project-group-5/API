@@ -201,6 +201,19 @@ app.get("/alarms", async (req, res) => {
 });
 
 
+// TRAVEL PATTERN — senaste resorna
+app.get("/trips", async (req, res) => {
+  try {
+    const { rows } = await pool.query(`
+        SELECT * FROM trips;
+      `);
+    res.json(rows);
+  } catch (err) {
+    console.error("GET /trips error:", err);
+    res.status(500).json({ error: "db_error" });
+  }
+});
+
 // HEALTH CHECK
 app.get("/health", async (req, res) => {
   try {
